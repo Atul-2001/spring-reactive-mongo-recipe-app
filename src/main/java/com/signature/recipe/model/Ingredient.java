@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import java.math.BigDecimal;
 
@@ -23,8 +22,6 @@ public class Ingredient {
   private String id;
   private BigDecimal amount;
   private String description;
-
-  @DBRef
   private UnitOfMeasure unit;
 
   public Ingredient(BigDecimal amount, UnitOfMeasure unit, String description) {

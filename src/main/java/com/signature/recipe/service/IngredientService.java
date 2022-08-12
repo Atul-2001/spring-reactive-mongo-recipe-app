@@ -8,9 +8,12 @@ import com.signature.recipe.repository.UnitOfMeasureRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Service
@@ -26,45 +29,45 @@ public class IngredientService {
   }
 
   public Mono<IngredientDTO> saveOrUpdate(final IngredientDTO ingredientDTO) {
-    Optional<Recipe> recipeOptional = recipeRepository.findById(ingredientDTO.getRecipeId()).blockOptional();
-    if (recipeOptional.isEmpty()) {
-      log.error("Recipe not found for id: " + ingredientDTO.getRecipeId());
-      return Mono.just(new IngredientDTO());
-    } else {
-      Recipe recipe = recipeOptional.get();
+    return recipeRepository.findById(ingredientDTO.getRecipeId()).flatMap(recipe -> {
+      AtomicReference<Ingredient> ingredientAtomicReference = new AtomicReference<>(recipe.getIngredients().stream()
+              .filter(ingredient -> ingredient.getId().equals(ingredientDTO.getId())).findFirst().orElse(null));
 
-      Optional<Ingredient> ingredientOptional = recipe.getIngredients().stream()
-              .filter(ingredient -> ingredient.getId().equals(ingredientDTO.getId()))
-              .findFirst();
-
-      if (ingredientOptional.isPresent()) {
-        Ingredient ingredientFound = ingredientOptional.get();
+      if (ingredientAtomicReference.get() != null) {
+        Ingredient ingredientFound = ingredientAtomicReference.get();
         ingredientFound.setDescription(ingredientDTO.getDescription());
         ingredientFound.setAmount(ingredientDTO.getAmount());
-        ingredientFound.setUnit(unitOfMeasureRepository
-                .findById(ingredientDTO.getUnitOfMeasure().getId())
-                .switchIfEmpty(Mono.error(new RuntimeException("UOM NOT FOUND"))).block());
+
+        unitOfMeasureRepository.findById(ingredientDTO.getUnitOfMeasure().getId())
+                .publishOn(Schedulers.immediate()).doOnNext(ingredientFound::setUnit)
+                .switchIfEmpty(Mono.error(new RuntimeException("UOM NOT FOUND"))).subscribe();
       } else {
         recipe.addIngredient(ingredientDTO.getModel());
       }
 
-      final Recipe savedRecipe = recipeRepository.save(recipe).block();
+      return recipeRepository.save(recipe).flatMap(savedRecipe -> {
+        ingredientAtomicReference.set(savedRecipe.getIngredients().stream()
+                .filter(ingredient -> ingredient.getId().equals(ingredientDTO.getId()))
+                .findFirst().orElse(null));
 
-      ingredientOptional = savedRecipe.getIngredients().stream()
-              .filter(ingredient -> ingredient.getId().equals(ingredientDTO.getId()))
-              .findFirst();
+        if (ingredientAtomicReference.get() == null) {
+          ingredientAtomicReference.set(savedRecipe.getIngredients().stream()
+                  .filter(recipeIngredients -> recipeIngredients.getDescription().equals(ingredientDTO.getDescription()))
+                  .filter(recipeIngredients -> recipeIngredients.getAmount().equals(ingredientDTO.getAmount()))
+                  .filter(recipeIngredients -> recipeIngredients.getUnit().getId().equals(ingredientDTO.getUnitOfMeasure().getId()))
+                  .findFirst().orElse(null));
+        }
 
-      if (ingredientOptional.isEmpty()) {
-        ingredientOptional = savedRecipe.getIngredients().stream()
-                .filter(recipeIngredients -> recipeIngredients.getDescription().equals(ingredientDTO.getDescription()))
-                .filter(recipeIngredients -> recipeIngredients.getAmount().equals(ingredientDTO.getAmount()))
-                .filter(recipeIngredients -> recipeIngredients.getUnit().getId().equals(ingredientDTO.getUnitOfMeasure().getId()))
-                .findFirst();
+        return Mono.justOrEmpty(ingredientAtomicReference.get() == null ? null :
+                ingredientAtomicReference.get().getDTO().setRecipeId(ingredientDTO.getRecipeId()));
+      });
+    }).switchIfEmpty(new Mono<IngredientDTO>() {
+      @Override
+      public void subscribe(CoreSubscriber<? super IngredientDTO> actual) {
+        log.error("Recipe not found for id: " + ingredientDTO.getRecipeId());
+        actual.onNext(new IngredientDTO());
       }
-
-      return Mono.justOrEmpty(ingredientOptional.isEmpty() ? null
-              : ingredientOptional.get().getDTO().setRecipeId(ingredientDTO.getRecipeId()));
-    }
+    });
   }
 
   public Mono<IngredientDTO> getByRecipeAndId(final String recipeId, final String ingredientId) {
@@ -77,27 +80,26 @@ public class IngredientService {
             });
   }
 
-  public Mono<Void> deleteByRecipeAndId(final String recipeId, final String ingredientId) {
+  public Mono<Recipe> deleteByRecipeAndId(final String recipeId, final String ingredientId) {
     log.debug("Deleting ingredient : " + recipeId + " : " + ingredientId);
 
-    Optional<Recipe> recipeOptional = recipeRepository.findById(recipeId).blockOptional();
-
-    if (recipeOptional.isPresent()) {
-      Recipe recipe = recipeOptional.get();
-
+    return recipeRepository.findById(recipeId).switchIfEmpty(new Mono<>() {
+      @Override
+      public void subscribe(CoreSubscriber<? super Recipe> actual) {
+        log.debug("Recipe not found fo id : " + recipeId);
+      }
+    }).flatMap(recipe -> {
       Optional<Ingredient> ingredientOptional = recipe.getIngredients().stream()
               .filter(ingredient -> ingredient.getId().equals(ingredientId)).findFirst();
 
       if (ingredientOptional.isPresent()) {
         Ingredient ingredient = ingredientOptional.get();
         recipe.getIngredients().remove(ingredient);
-        recipeRepository.save(recipe).block();
+        return recipeRepository.save(recipe);
       } else {
         log.debug("Ingredient not found for id : " + ingredientId);
+        return Mono.empty();
       }
-    } else {
-      log.debug("Recipe not found fo id : " + recipeId);
-    }
-    return Mono.empty();
+    });
   }
 }

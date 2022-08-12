@@ -2,12 +2,18 @@ package com.signature.recipe.service;
 
 import com.signature.recipe.data.RecipeDTO;
 import com.signature.recipe.exceptions.NotFoundException;
+import com.signature.recipe.model.Category;
+import com.signature.recipe.model.Ingredient;
 import com.signature.recipe.model.Recipe;
 import com.signature.recipe.repository.RecipeRepository;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
+import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.stream.Collectors;
 
 @Log4j2
 @Service
@@ -22,7 +28,24 @@ public class RecipeService {
 
   public Mono<Recipe> save(RecipeDTO recipeDTO) {
     log.debug("Saving new recipe with description : {}", recipeDTO.getDescription());
-    return recipeRepository.save(recipeDTO.getModel());
+    if (StringUtils.isBlank(recipeDTO.getId())) {
+      return recipeRepository.save(recipeDTO.getModel());
+    } else {
+      return recipeRepository.findById(recipeDTO.getId()).flatMap(recipe -> {
+        recipeDTO.setCategories(recipe.getCategories().stream()
+                .map(Category::getDTO).collect(Collectors.toSet()));
+        recipeDTO.setIngredients(recipe.getIngredients().stream()
+                .map(Ingredient::getDTO).collect(Collectors.toSet()));
+        recipeDTO.setImage(recipe.getImage());
+        if (recipe.getNote().getDescription()
+                .equals(recipeDTO.getNotes().getDescription())) {
+          recipeDTO.getNotes().setId(ObjectId.get().toString());
+        } else {
+          recipeDTO.getNotes().setId(recipe.getNote().getId());
+        }
+        return recipeRepository.save(recipeDTO.getModel());
+      });
+    }
   }
 
   public Flux<Recipe> getAllRecipes() {

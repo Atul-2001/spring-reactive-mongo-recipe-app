@@ -10,7 +10,6 @@ import lombok.NonNull;
 import lombok.Setter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.HashSet;
@@ -30,13 +29,18 @@ public class Category {
   @NonNull
   private String description;
 
-  @DBRef
   @Builder.Default
   @ToString.Exclude
   private Set<Recipe> recipes = new HashSet<>();
 
   public Category(@NonNull String description) {
     this.description = description;
+  }
+
+  public Set<Recipe> getRecipes() {
+    if (recipes == null)
+      recipes = new HashSet<>();
+    return recipes;
   }
 
   @JsonIgnore

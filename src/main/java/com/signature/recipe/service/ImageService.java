@@ -1,13 +1,14 @@
 package com.signature.recipe.service;
 
+import com.signature.recipe.model.Recipe;
 import com.signature.recipe.repository.RecipeRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.codec.multipart.FilePart;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Mono;
 
-import java.io.IOException;
 import java.util.Objects;
 
 @Slf4j
@@ -21,22 +22,15 @@ public class ImageService {
   }
 
   @Transactional
-  public Mono<Void> saveImageFile(String recipeId, MultipartFile multipartFile) {
-    return recipeRepository.findById(recipeId).doOnSuccess(recipe -> {
+  public Mono<Recipe> saveImageFile(String recipeId, Mono<FilePart> filePart) {
+    return recipeRepository.findById(recipeId).flatMap(recipe -> {
       if (Objects.isNull(recipe)) {
         log.info("Recipe not found for id : {}", recipeId);
+        return Mono.empty();
       } else {
-        try {
-          recipe.setImage(multipartFile.getBytes());
-        } catch (final IOException ex) {
-          log.error("Failed to save image file", ex);
-        }
+        return filePart.flatMap(dataBuffer -> DataBufferUtils.join(dataBuffer.content())
+                .flatMap(data -> recipeRepository.save(recipe.setImage(data.asByteBuffer().array()))));
       }
-    }).mapNotNull(recipe -> {
-      if (Objects.nonNull(recipe)) {
-        recipeRepository.save(recipe).block();
-      }
-      return null;
     });
   }
 }

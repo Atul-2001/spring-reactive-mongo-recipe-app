@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Base64;
@@ -41,7 +40,6 @@ public class Recipe {
   private Integer rating;
   private Difficulty difficulty;
 
-  @DBRef
   @Builder.Default
   @ToString.Exclude
   private Set<Category> categories = new HashSet<>();
@@ -65,7 +63,7 @@ public class Recipe {
     return bytes;
   }
 
-  public void setImage(byte[] image) {
+  public Recipe setImage(byte[] image) {
     if (Objects.nonNull(image)) {
       Byte[] bytes = new Byte[image.length];
       for (int i = 0; i < image.length; i++) {
@@ -73,6 +71,7 @@ public class Recipe {
       }
       this.image = bytes;
     }
+    return this;
   }
 
   public void setImage(Byte[] image) {
@@ -84,7 +83,7 @@ public class Recipe {
   }
 
   public Recipe addCategory(Category category) {
-    category.getRecipes().add(this);
+//    category.getRecipes().add(this);
     this.categories.add(category);
     return this;
   }

@@ -45,11 +45,12 @@
                             </div>
                             <div class="col-sm-12 col-md-4 mb-3">
                                 <label for="uom">Unit of Measure : </label>
-                                <select class="form-control" id="uom" name="unitOfMeasure.id">
+                                <select class="form-control" id="uom" name="unitOfMeasure">
                                     <option th:each="unitOfMeasure : ${unitOfMeasures}"
                                             th:selected="${unitOfMeasure.id.equals(ingredient.unitOfMeasure.id)}"
                                             th:text="${unitOfMeasure.description}"
-                                            th:value="${unitOfMeasure.id}">Each
+                                            th:value="${unitOfMeasure.id} + ':' + ${unitOfMeasure.description}">
+                                        Each
                                     </option>
                                 </select>
                             </div>
