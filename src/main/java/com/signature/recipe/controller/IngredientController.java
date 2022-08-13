@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.validation.Valid;
@@ -39,6 +40,11 @@ public class IngredientController {
     this.unitOfMeasureService = unitOfMeasureService;
   }
 
+  @ModelAttribute("unitOfMeasures")
+  public Flux<UnitOfMeasureDTO> populateUomList() {
+    return unitOfMeasureService.getAll();
+  }
+
   @GetMapping("/ingredient/new")
   public Mono<String> newRecipe(@PathVariable String recipeId, Model model) {
     //make sure we have a good id value
@@ -51,7 +57,6 @@ public class IngredientController {
               ingredientDTO.setUnitOfMeasure(new UnitOfMeasureDTO());
 
               model.addAttribute("ingredient", ingredientDTO);
-              model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
 
               return Mono.just("recipe/ingredient/form");
             });
@@ -86,8 +91,6 @@ public class IngredientController {
                                        @PathVariable String id,
                                        final Model model) {
     model.addAttribute("ingredient", ingredientService.getByRecipeAndId(recipeId, id));
-
-    model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
     return "recipe/ingredient/form";
   }
 
@@ -97,7 +100,6 @@ public class IngredientController {
                                    final Model model) {
     if (bindingResult.hasErrors()) {
       bindingResult.getAllErrors().forEach(objectError -> log.debug(objectError.toString()));
-      model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
       model.addAttribute("ingredient", bindingResult.getTarget());
       return Mono.just("recipe/ingredient/form");
     }
