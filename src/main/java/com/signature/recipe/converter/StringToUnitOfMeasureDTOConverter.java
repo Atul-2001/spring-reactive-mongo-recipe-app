@@ -7,6 +7,10 @@ public class StringToUnitOfMeasureDTOConverter implements Converter<String, Unit
   @Override
   public UnitOfMeasureDTO convert(String source) {
     String[] split = source.split(":");
-    return new UnitOfMeasureDTO(split[0], split[1]);
+    if (split.length == 2) {
+      return new UnitOfMeasureDTO(split[0], split[1]);
+    } else {
+      return new UnitOfMeasureDTO(split[0], "");
+    }
   }
 }

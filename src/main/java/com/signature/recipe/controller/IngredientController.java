@@ -10,15 +10,15 @@ import com.signature.recipe.service.UnitOfMeasureService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.WebDataBinder;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import reactor.core.publisher.Mono;
 
+import javax.validation.Valid;
 import java.util.Objects;
 
 @Slf4j
@@ -39,11 +39,6 @@ public class IngredientController {
     this.unitOfMeasureService = unitOfMeasureService;
   }
 
-  @InitBinder("ingredient")
-  protected void initBinder(WebDataBinder binder) {
-//    binder.addCustomFormatter(new StringToUnitOfMeasureConverter(), "");
-  }
-
   @GetMapping("/ingredient/new")
   public Mono<String> newRecipe(@PathVariable String recipeId, Model model) {
     //make sure we have a good id value
@@ -58,7 +53,7 @@ public class IngredientController {
               model.addAttribute("ingredient", ingredientDTO);
               model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
 
-              return Mono.just("/recipe/ingredient/form");
+              return Mono.just("recipe/ingredient/form");
             });
   }
 
@@ -67,7 +62,7 @@ public class IngredientController {
     log.debug("Getting ingredient list for recipe id: " + recipeId);
     final Mono<Recipe> recipe = recipeService.getById(recipeId);
     model.addAttribute("recipe", recipe.map(Recipe::getDTO));
-    return "/recipe/ingredient/index";
+    return "recipe/ingredient/index";
   }
 
   @GetMapping("/ingredient/{ingredientId}/show")
@@ -78,10 +73,10 @@ public class IngredientController {
     return ingredientService.getByRecipeAndId(recipeId, ingredientId)
             .flatMap(ingredient -> {
               if (Objects.isNull(ingredient)) {
-                return Mono.just("/recipe/ingredient/index");
+                return Mono.just("recipe/ingredient/index");
               } else {
                 model.addAttribute("ingredient", ingredient);
-                return Mono.just("/recipe/ingredient/show");
+                return Mono.just("recipe/ingredient/show");
               }
             });
   }
@@ -93,11 +88,20 @@ public class IngredientController {
     model.addAttribute("ingredient", ingredientService.getByRecipeAndId(recipeId, id));
 
     model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
-    return "/recipe/ingredient/form";
+    return "recipe/ingredient/form";
   }
 
   @PostMapping("ingredient")
-  public Mono<String> saveOrUpdate(@ModelAttribute IngredientDTO ingredient) {
+  public Mono<String> saveOrUpdate(@Valid @ModelAttribute("ingredient") IngredientDTO ingredient,
+                                   final BindingResult bindingResult,
+                                   final Model model) {
+    if (bindingResult.hasErrors()) {
+      bindingResult.getAllErrors().forEach(objectError -> log.debug(objectError.toString()));
+      model.addAttribute("unitOfMeasures", unitOfMeasureService.getAll());
+      model.addAttribute("ingredient", bindingResult.getTarget());
+      return Mono.just("recipe/ingredient/form");
+    }
+
     return ingredientService.saveOrUpdate(ingredient).flatMap(ingredientDTO -> {
       log.debug("saved ingredient id:" + ingredientDTO.getId());
       return Mono.just(String.format("redirect:/recipe/%s/ingredient/%s/show",

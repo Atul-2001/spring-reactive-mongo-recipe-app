@@ -10,6 +10,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Getter
@@ -21,8 +24,15 @@ public class IngredientDTO {
   @Id
   private String id;
   private String recipeId;
+
+  @Min(1)
+  @NotNull
   private BigDecimal amount;
+
+  @NotBlank
   private String description;
+
+  @NotNull
   private UnitOfMeasureDTO unitOfMeasure;
 
   public IngredientDTO(String id, BigDecimal amount, String description,

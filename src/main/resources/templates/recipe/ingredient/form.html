@@ -26,7 +26,13 @@
     <div class="row">
         <div class="col-md-6 offset-md-3">
             <a class="back" th:href="@{'/recipe/' + ${ingredient.getRecipeId()} + '/ingredients'}">&#9204; Back</a>
-            <form method="post" th:action="@{'/recipe/' + ${ingredient.getRecipeId()} + '/ingredient'}">
+            <form th:object="${ingredient}" method="post"
+                  th:action="@{'/recipe/' + ${ingredient.getRecipeId()} + '/ingredient'}">
+
+                <div class="alert alert-danger" role="alert" th:if="${#fields.hasErrors()}">
+                    Please correct errors below!
+                </div>
+
                 <input th:field="${ingredient.id}" type="hidden"/>
                 <div class="card card-primary">
                     <div class="card-header">
@@ -34,18 +40,32 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-sm-12 col-md-4 mb-3">
+                            <div th:class="${#fields.hasErrors('description')
+                             ? 'col-sm-12 col-md-4 mb-3 is-invalid' : 'col-sm-12 col-md-4 mb-3'}">
                                 <label for="servings">Description : </label>
                                 <input class="form-control" id="servings" th:field="${ingredient.description}"
-                                       type="text"/>
+                                       type="text" th:errorclass="is-invalid"/>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}">
+                                    <ul>
+                                        <li th:each="err : ${#fields.errors('description')}" th:text="${err}"></li>
+                                    </ul>
+                                </div>
                             </div>
-                            <div class="col-sm-12 col-md-4 mb-3">
+                            <div th:class="${#fields.hasErrors('amount')
+                             ? 'col-sm-12 col-md-4 mb-3 is-invalid' : 'col-sm-12 col-md-4 mb-3'}">
                                 <label for="source">Amount : </label>
-                                <input class="form-control" id="source" th:field="${ingredient.amount}" type="text"/>
+                                <input class="form-control" id="source" th:field="${ingredient.amount}"
+                                       type="text" th:errorclass="is-invalid"/>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('amount')}">
+                                    <ul>
+                                        <li th:each="err : ${#fields.errors('amount')}" th:text="${err}"></li>
+                                    </ul>
+                                </div>
                             </div>
-                            <div class="col-sm-12 col-md-4 mb-3">
+                            <div th:class="${#fields.hasErrors('unitOfMeasure')
+                             ? 'col-sm-12 col-md-4 mb-3 is-invalid' : 'col-sm-12 col-md-4 mb-3'}">
                                 <label for="uom">Unit of Measure : </label>
-                                <select class="form-control" id="uom" name="unitOfMeasure">
+                                <select class="form-control" id="uom" name="unitOfMeasure" th:errorclass="is-invalid">
                                     <option th:each="unitOfMeasure : ${unitOfMeasures}"
                                             th:selected="${unitOfMeasure.id.equals(ingredient.unitOfMeasure.id)}"
                                             th:text="${unitOfMeasure.description}"
@@ -53,6 +73,11 @@
                                         Each
                                     </option>
                                 </select>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('unitOfMeasure')}">
+                                    <ul>
+                                        <li th:each="err : ${#fields.errors('unitOfMeasure')}" th:text="${err}"></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
