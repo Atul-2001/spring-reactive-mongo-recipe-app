@@ -74,10 +74,6 @@ public class Recipe {
     return this;
   }
 
-  public void setImage(Byte[] image) {
-    this.image = image;
-  }
-
   public String getBase64Image() {
     return "data:image/jpeg;base64,".concat(Base64.getMimeEncoder().encodeToString(getImage()));
   }
